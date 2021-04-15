@@ -1,4 +1,4 @@
-import numpy as np 
+import numpy as np
 import time
 
 from .andor_solis import *
@@ -9,7 +9,7 @@ from zprocess import rich_print
 s, ms, us, ns = 1.0, 1e-3, 1e-6, 1e-9
 
 class AndorCam(object):
-    
+
     default_acquisition_attrs = {
         'acquisition': 'single',
         'emccd': False,
@@ -33,8 +33,8 @@ class AndorCam(object):
         'xbin': 1,
         'ybin': 1,
         'center_row': None,
-        'height': 1024,
-        'width': 1024,
+        'height': 512,
+        'width': 512,
         'left_start': 1,
         'bottom_start': 1,
         'v_offset': 0,
@@ -53,7 +53,7 @@ class AndorCam(object):
         self.name = name
 
         # Do I want to know everything about you? Set this
-        # attribute to True if you want to print a bunch of 
+        # attribute to True if you want to print a bunch of
         # information and configuration properties.
         self.chatty = True
 
@@ -68,12 +68,12 @@ class AndorCam(object):
 
     def initialize_camera(self):
         """ Initialization function; starts communication with the
-        sensor, pulling information such as capabilities, which are 
+        sensor, pulling information such as capabilities, which are
         useful for further acquisition settings """
         rich_print('Connecting to camera...', color='yellow')
         Initialize()
         self.serial_number = GetCameraSerialNumber()
-    
+
         # Pull model and other capabilities struct
         self.check_capabilities()
 
@@ -139,7 +139,7 @@ class AndorCam(object):
             or temperature_setpoint > self.temperature_range[1]
         ):
             raise ValueError(
-                f"""Invalid temperature setpoint; supported range is 
+                f"""Invalid temperature setpoint; supported range is
                 {self.temperature_range} C"""
             )
 
@@ -180,7 +180,7 @@ class AndorCam(object):
         SetCoolerMode(0)
 
     def enable_preamp(self, preamp_gain):
-        """ Calls all the functions relative to the 
+        """ Calls all the functions relative to the
         preamplifier gain control. """
 
         if not preamp_gain in np.linspace(self.preamp_gain_range[0],
@@ -198,7 +198,7 @@ class AndorCam(object):
         self.preamp = True
 
     def enable_emccd(self, emccd_gain):
-        """ Calls all the functions relative to the 
+        """ Calls all the functions relative to the
         emccd gain control. """
 
         if not emccd_gain in self.emccd_gain_range:
@@ -209,7 +209,7 @@ class AndorCam(object):
         if not self.cooling:
             raise ValueError(
                 f"""Please enable the temperature control by setting the acquisition
-                attribute 'cooldown' to 'True' before enabling the EMCCD gain, as this 
+                attribute 'cooldown' to 'True' before enabling the EMCCD gain, as this
                 will prolong the lifetime of the sensor"""
             )
 
@@ -231,7 +231,7 @@ class AndorCam(object):
         #       0 --> 0.6 us/pix
         #       1 --> 1.13 us/pix
         #       2 --> 2.2 us/pix
-        #       3 --> 4.3 us/pix 
+        #       3 --> 4.3 us/pix
 
         # Fastest default vertical shifting speed choice is left to hardware
         if custom_option is None:
@@ -253,9 +253,9 @@ class AndorCam(object):
                     raise ValueError("Invalid custom option for vertical shift speed")
                 self.vs_speed = GetVSSpeed(custom_option)
                 SetVSSpeed(self.index_vs_speed)
-                # For the fastest shifting speed, the clock voltage amp needs 
-                # to be adjusted to prevent smearing during readout. Check the 
-                # hardware documentation to change this accordingly. 
+                # For the fastest shifting speed, the clock voltage amp needs
+                # to be adjusted to prevent smearing during readout. Check the
+                # hardware documentation to change this accordingly.
                 # Default corresponds to an iXon 888 USB:
                 if custom_option == 0:
                     SetVSAmplitude(3)
@@ -281,10 +281,10 @@ class AndorCam(object):
         SetHSSpeed(0, self.index_hs_speed)
         # Get actual horizontal shifting (i.e. digitization) speed
         self.horizontal_shift_speed = GetHSSpeed(ad_number, 0, self.index_hs_speed)
-     
+
     def setup_acquisition(self, added_attributes=None):
         """ Main acquisition configuration method. Available acquisition modes are
-        below. The relevant methods are called with the corresponding acquisition 
+        below. The relevant methods are called with the corresponding acquisition
         attributes dictionary, then the camera is armed and ready """
         if added_attributes is None:
             added_attributes = {}
@@ -292,12 +292,12 @@ class AndorCam(object):
         # Override default acquisition attrs with added ones
         self.acquisition_attributes = self.default_acquisition_attrs.copy()
         self.acquisition_attributes.update(added_attributes)
-    
+
         self.acquisition_mode = self.acquisition_attributes['acquisition']
 
         if self.acquisition_attributes['preamp']:
             self.enable_preamp(self.acquisition_attributes['preamp_gain'])
-        
+
         if self.acquisition_attributes['emccd']:
             self.enable_emccd(self.acquisition_attributes['emccd_gain'])
 
@@ -312,7 +312,7 @@ class AndorCam(object):
             self.temperature, self.temperature_status = GetTemperatureF()
             if self.chatty:
                 rich_print(
-                    f"""At setup_acquisition the temperature is: 
+                    f"""At setup_acquisition the temperature is:
                     {self.temperature}; with status {self.temperature_status}""",
                     color='magenta',
                 )
@@ -355,10 +355,10 @@ class AndorCam(object):
 
         # Get actual timings
         self.exposure_time, self.accum_timing, self.kinetics_timing = GetAcquisitionTimings()
-    
+
         if 'fast_kinetics' in self.acquisition_mode:
             self.exposure_time = GetFKExposureTime()
-        
+
         # Arm sensor
         self.armed = True
 
@@ -368,14 +368,14 @@ class AndorCam(object):
             self.readout_time = GetReadOutTime()
         else:
             # Made up number, somehow FK doesn't work with GetReadOutTime()
-           self.readout_time = 1000.0 
+           self.readout_time = 1000.0
 
-       
+
     def configure_accumulate(self, **attrs):
         """ Takes a sequence of single scans and adds them together """
-    
+
         SetNumberAccumulations(attrs['number_accumulations'])
-        
+
         # In External Trigger mode the delay between each scan making up
         # the acquisition is not under the control of the Andor system but
         # is synchronized to an externally generated trigger pulse.
@@ -384,7 +384,7 @@ class AndorCam(object):
 
 
     def configure_kinetic_series(self, **attrs):
-        """ Captures a sequence of single scans, or possibly, depending on 
+        """ Captures a sequence of single scans, or possibly, depending on
         the camera, a sequence of accumulated scans """
 
         SetNumberKinetics(attrs['number_kinetics'])
@@ -399,12 +399,12 @@ class AndorCam(object):
             SetNumberAccumulations(1)
 
     def configure_fast_kinetics(self, **attrs):
-        """ Special readout mode that uses the actual sensor as a temporary 
-        storage medium and allows an extremely fast sequence of images to be 
+        """ Special readout mode that uses the actual sensor as a temporary
+        storage medium and allows an extremely fast sequence of images to be
         captured """
 
         fk_modes = {'FVB': 0, 'full_image': 4}
-        
+
         self.number_fast_kinetics = self.acquisition_attributes['number_kinetics']
 
         if 'exposed_rows' not in attrs.keys():
@@ -444,8 +444,8 @@ class AndorCam(object):
 
         edge_modes = {'rising': 0, 'falling': 1}
 
-        # TODO: Maybe check the self.trig_caps attribute here 
-        # before attempting to set a trigger mode that may not 
+        # TODO: Maybe check the self.trig_caps attribute here
+        # before attempting to set a trigger mode that may not
         # even be present.
         SetTriggerMode(modes[attrs['trigger']])
 
@@ -458,7 +458,7 @@ class AndorCam(object):
 
     def setup_shutter(self, **attrs):
         """ Sets different aspects of the shutter and exposure"""
-    
+
         # Available modes
         modes = {
             'auto': 0,
@@ -480,7 +480,7 @@ class AndorCam(object):
         )
 
     def setup_readout(self, **attrs):
-        """ Sets different aspects of the data readout, including 
+        """ Sets different aspects of the data readout, including
         image shape, readout mode and amplification during readout options """
 
         # Available modes
@@ -505,10 +505,10 @@ class AndorCam(object):
             attrs['height'] // attrs['ybin'],
             attrs['width'] // attrs['xbin'],
         )
-        
-        # For a full-frame kinetic series, we simply set the frame for readout. 
-        # If we use crop mode, we need to enable the second output amplifier since 
-        # crop mode is only available then. The default EM gain mode is 0, where 
+
+        # For a full-frame kinetic series, we simply set the frame for readout.
+        # If we use crop mode, we need to enable the second output amplifier since
+        # crop mode is only available then. The default EM gain mode is 0, where
         # the gain is controlled by internal DAC settings in the default range (see
         # self.emgain_caps). For higher ranges use SetEMGainMode(). We also need to
         # enable the frame transfer mode.
@@ -516,26 +516,26 @@ class AndorCam(object):
             if self.acquisition_attributes['crop']:
                 SetOutputAmplifier(0)
                 SetFrameTransferMode(1)
-                SetIsolatedCropModeEx(
-                    int(1),
-                    int(attrs['height']),
-                    int(attrs['width']),
-                    attrs['ybin'],
-                    attrs['xbin'],
-                    attrs['left_start'],
-                    attrs['bottom_start'],
-                )
+                # SetIsolatedCropModeEx(
+                #     int(1),
+                #     int(attrs['height']),
+                #     int(attrs['width']),
+                #     attrs['ybin'],
+                #     attrs['xbin'],
+                #     attrs['left_start'],
+                #     attrs['bottom_start'],
+                # )
         else:
             SetFrameTransferMode(0)
-            SetIsolatedCropModeEx(
-                int(0),
-                int(attrs['height']),
-                int(attrs['width']),
-                attrs['ybin'],
-                attrs['xbin'],
-                attrs['left_start'],
-                attrs['bottom_start'],
-            )
+#             SetIsolatedCropModeEx(
+#                 int(0),
+#                 int(attrs['height']),
+#                 int(attrs['width']),
+#                 attrs['ybin'],
+#                 attrs['xbin'],
+#                 attrs['left_start'],
+#                 attrs['bottom_start'],
+#             )
         SetImage(
             attrs['xbin'],
             attrs['ybin'],
@@ -549,7 +549,7 @@ class AndorCam(object):
         """ Carries down the acquisition, if the camera is armed and
         waits for an acquisition event for acquisition timeout (has to be
         in milliseconds), default to 5 seconds """
-    
+
         acquisition_timeout = self.acquisition_attributes['acquisition_timeout']
 
         def homemade_wait_for_acquisition():
@@ -558,7 +558,7 @@ class AndorCam(object):
             while self.acquisition_status != 'DRV_IDLE':
                 self.acquisition_status = GetStatus()
                 # TODO: Also count the number of acquired (buffered) images and
-                # stop when it matches the expected number of frames. 
+                # stop when it matches the expected number of frames.
                 t0 = time.time() - start_wait
                 if t0 > acquisition_timeout * ms:
                     rich_print(
@@ -576,7 +576,7 @@ class AndorCam(object):
                     f"homemade_wait_for_acquisition: elapsed time {t0/ms} ms, out of max {acquisition_timeout} ms",
                     color='goldenrod',
                 )
-                                                            
+
         if not self.armed:
             raise Exception("Cannot start acquisition until armed")
         else:
@@ -589,7 +589,7 @@ class AndorCam(object):
                         color='yellow',
                     )
                 homemade_wait_for_acquisition()
-            
+
             # Last chance, check if the acquisition is finished, update
             # acquisition status otherwise, abort and raise an error
 
@@ -604,7 +604,7 @@ class AndorCam(object):
         """ Download buffered acquisition. For fast kinetics, returns a 3D
         array of shape (N_fast_kinetics, Ny//N, Nx). Otherwise, returns array
         of shape (N_exposures, Ny, Nx)."""
-        
+
         N = self.acquisition_attributes['number_kinetics']
         if 'fast_kinetics' in self.acquisition_mode:
             shape = (N, self.image_shape[0] // N, self.image_shape[1])
@@ -636,7 +636,7 @@ class AndorCam(object):
                 print("Data shape and dtype is:", data.shape, data.dtype)
         else:
             print(
-                f"""------> Incorrect number of images to download: 
+                f"""------> Incorrect number of images to download:
                 {available_images}, expecting: {N}."""
             )
             data = np.zeros(shape)
@@ -656,22 +656,22 @@ class AndorCam(object):
         """ Shuts camera down, if unarmed """
         if self.armed:
             raise ValueError(
-                """Cannot shutdown while the camera is armed, please 
+                """Cannot shutdown while the camera is armed, please
                 finish or abort the current acquisition before shutdown"""
             )
         else:
             ShutDown()
-        
+
 if __name__ in '__main__':
     pass
-    
+
     # cam = AndorCam()
-    
+
     # # First test should arm with default attrs and go
     # cam.setup_acquisition(added_attributes={'exposure_time':25*ms,})
     # cam.acquire()
     # single_acq_image = cam.download_acquisition()
-   
+
     # # Second test, configure 3-shot kinetic series, trigger internally,
     # # sequence is similar to absorption imaging series
     # internal_kinetics_attrs = {
@@ -685,7 +685,7 @@ if __name__ in '__main__':
     # cam.setup_acquisition(internal_kinetics_attrs)
     # cam.acquire()
     # kinetics_series_images = cam.download_acquisition()
-   
+
     # # Third test, 10-shot fast kinetics, internal trigger and no binning.
     # fast_kinetics_attrs = {
     # 'exposure_time':1*ms,
@@ -698,11 +698,11 @@ if __name__ in '__main__':
     # cam.setup_acquisition(fast_kinetics_attrs)
     # cam.snap()
     # fast_kinetics_image = cam.grab_acquisition()
-   
+
     # import matplotlib.pyplot as plt
     # plt.figure()
     # plt.imshow(single_acq_image[0], cmap='seismic')
-   
+
     # plt.figure()
     # ax = plt.subplot(311)
     # ax.imshow(kinetics_series_images[0], cmap='seismic')
@@ -710,7 +710,6 @@ if __name__ in '__main__':
     # ax.imshow(kinetics_series_images[1], cmap='seismic')
     # ax = plt.subplot(313)
     # ax.imshow(kinetics_series_images[2], cmap='seismic')
-   
+
     # plt.figure()
     # plt.imshow(fast_kinetics_image[0], cmap='seismic')
-   
